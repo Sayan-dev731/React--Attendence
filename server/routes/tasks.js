@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import { body, validationResult } from 'express-validator';
 import Task from '../models/Task.js';
 import User from '../models/User.js';
@@ -21,16 +22,19 @@ router.get('/', authenticate, async (req, res) => {
             limit = 10,
             sortBy = 'createdAt',
             sortOrder = -1
-        } = req.query;
-
-        let query = {};
-
-        // If not admin/hr, only show user's own tasks
+        } = req.query; let query = {};        // Task visibility rules:
+        // - All users (including admins): Can only see tasks assigned to them
+        // - Admin/HR: Can still filter by specific assignedTo in manage tasks view
         if (!['admin', 'hr'].includes(req.user.role)) {
+            // Employees can only see their own assigned tasks
             query.assignedTo = req.user.id;
         } else if (assignedTo) {
+            // Admin/HR can filter tasks by assignedTo parameter (for manage tasks view)
             query.assignedTo = assignedTo;
-        }        // Add filters
+        } else {
+            // Admin/HR in dashboard view: show only their own assigned tasks
+            query.assignedTo = req.user.id;
+        }// Add filters
         if (status && status !== 'all') {
             // Handle multiple statuses separated by comma
             if (status.includes(',')) {
@@ -103,14 +107,14 @@ router.get('/:id', authenticate, async (req, res) => {
                 success: false,
                 message: 'Task not found'
             });
-        }
-
-        // Check if user has permission to view this task
+        }        // Task access control:
+        // - Employees: Can only view tasks assigned to them
+        // - Admin/HR: Can view any task (for management purposes)
         if (!['admin', 'hr'].includes(req.user.role) &&
             task.assignedTo._id.toString() !== req.user.id) {
             return res.status(403).json({
                 success: false,
-                message: 'Access denied'
+                message: 'Access denied - You can only view tasks assigned to you'
             });
         }
 
@@ -226,19 +230,21 @@ router.put('/:id', authenticate, async (req, res) => {
                 success: false,
                 message: 'Task not found'
             });
-        }
-
-        const isAdminOrHR = ['admin', 'hr'].includes(req.user.role);
+        } const isAdminOrHR = ['admin', 'hr'].includes(req.user.role);
         const isAssignedUser = task.assignedTo.toString() === req.user.id;
 
+        // Task modification rules:
+        // - Employees: Can only update their own assigned tasks (limited fields)
+        // - Admin/HR: Can update any task (all fields)
         if (!isAdminOrHR && !isAssignedUser) {
             return res.status(403).json({
                 success: false,
-                message: 'Access denied'
+                message: 'Access denied - You can only update tasks assigned to you'
             });
         }
 
-        const updates = {}; const allowedUpdates = isAdminOrHR
+        const updates = {};
+        const allowedUpdates = isAdminOrHR
             ? ['title', 'description', 'priority', 'assignedTo', 'dueDate', 'estimatedHours', 'category', 'tags', 'status', 'progress', 'dependencies', 'completionReason']
             : ['status', 'progress', 'actualHours', 'completionReason'];
 
@@ -300,16 +306,18 @@ router.post('/:id/comments', [
                 success: false,
                 message: 'Task not found'
             });
-        }
-
-        const isAdminOrHR = ['admin', 'hr'].includes(req.user.role);
+        } const isAdminOrHR = ['admin', 'hr'].includes(req.user.role);
         const isAssignedUser = task.assignedTo.toString() === req.user.id;
         const isTaskCreator = task.assignedBy.toString() === req.user.id;
 
+        // Comment access rules:
+        // - Employees: Can comment on tasks assigned to them
+        // - Admin/HR: Can comment on any task
+        // - Task creators: Can comment on tasks they created
         if (!isAdminOrHR && !isAssignedUser && !isTaskCreator) {
             return res.status(403).json({
                 success: false,
-                message: 'Access denied'
+                message: 'Access denied - You can only comment on tasks assigned to you or created by you'
             });
         }
 
@@ -449,11 +457,9 @@ router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
 // @access  Private (Admin, HR)
 router.get('/stats/overview', authenticate, authorize('admin', 'hr'), async (req, res) => {
     try {
-        const { userId, startDate, endDate } = req.query;
-
-        let matchQuery = {};
+        const { userId, startDate, endDate } = req.query; let matchQuery = {};
         if (userId) {
-            matchQuery.assignedTo = mongoose.Types.ObjectId(userId);
+            matchQuery.assignedTo = new mongoose.Types.ObjectId(userId);
         }
         if (startDate && endDate) {
             matchQuery.createdAt = {
@@ -521,6 +527,237 @@ router.get('/stats/overview', authenticate, authorize('admin', 'hr'), async (req
         });
     } catch (error) {
         console.error('Get task stats error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+});
+
+// @route   GET /api/tasks/by-employee
+// @desc    Get tasks grouped by employee (for admin manage tasks view)
+// @access  Private (Admin, HR only)
+router.get('/by-employee', authenticate, authorize('admin', 'hr'), async (req, res) => {
+    try {
+        const {
+            status,
+            priority,
+            category,
+            search,
+            startDate,
+            endDate,
+            page = 1,
+            limit = 50
+        } = req.query;
+
+        let matchQuery = {};
+
+        // Add filters
+        if (status && status !== 'all') {
+            if (status.includes(',')) {
+                matchQuery.status = { $in: status.split(',').map(s => s.trim()) };
+            } else {
+                matchQuery.status = status;
+            }
+        }
+        if (priority && priority !== 'all') {
+            matchQuery.priority = priority;
+        }
+        if (category && category !== 'all') {
+            matchQuery.category = category;
+        }
+        if (startDate && endDate) {
+            matchQuery.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+        if (search) {
+            matchQuery.$or = [
+                { title: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } },
+                { tags: { $in: [new RegExp(search, 'i')] } }
+            ];
+        }
+
+        const skip = (page - 1) * limit;
+
+        // Get tasks grouped by employee
+        const tasksByEmployee = await Task.aggregate([
+            { $match: matchQuery },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'assignedTo',
+                    foreignField: '_id',
+                    as: 'assignedUser'
+                }
+            },
+            { $unwind: '$assignedUser' },
+            {
+                $group: {
+                    _id: '$assignedTo',
+                    employee: { $first: '$assignedUser' },
+                    tasks: { $push: '$$ROOT' },
+                    totalTasks: { $sum: 1 },
+                    completedTasks: {
+                        $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+                    },
+                    inProgressTasks: {
+                        $sum: { $cond: [{ $eq: ['$status', 'in-progress'] }, 1, 0] }
+                    },
+                    overdueTasks: {
+                        $sum: { $cond: [{ $eq: ['$status', 'overdue'] }, 1, 0] }
+                    }
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    employee: {
+                        _id: '$employee._id',
+                        name: '$employee.name',
+                        email: '$employee.email',
+                        role: '$employee.role',
+                        department: '$employee.department'
+                    },
+                    tasks: {
+                        $slice: ['$tasks', skip, parseInt(limit)]
+                    },
+                    totalTasks: 1,
+                    completedTasks: 1,
+                    inProgressTasks: 1,
+                    overdueTasks: 1,
+                    completionRate: {
+                        $cond: [
+                            { $gt: ['$totalTasks', 0] },
+                            { $multiply: [{ $divide: ['$completedTasks', '$totalTasks'] }, 100] },
+                            0
+                        ]
+                    }
+                }
+            },
+            { $sort: { 'employee.name': 1 } }
+        ]);
+
+        const totalEmployeesWithTasks = await Task.distinct('assignedTo', matchQuery);
+
+        res.json({
+            success: true,
+            data: tasksByEmployee,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(totalEmployeesWithTasks.length / limit),
+                totalEmployees: totalEmployeesWithTasks.length,
+                hasNext: page * limit < totalEmployeesWithTasks.length,
+                hasPrev: page > 1
+            }
+        });
+    } catch (error) {
+        console.error('Get tasks by employee error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+});
+
+// @route   GET /api/tasks/employee-summary
+// @desc    Get employee task summary (for admin dashboard)
+// @access  Private (Admin, HR only)
+router.get('/employee-summary', authenticate, authorize('admin', 'hr'), async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        let matchQuery = {};
+        if (startDate && endDate) {
+            matchQuery.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+
+        // Get summary of all employees with their task statistics
+        const employeeSummary = await Task.aggregate([
+            { $match: matchQuery },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'assignedTo',
+                    foreignField: '_id',
+                    as: 'assignedUser'
+                }
+            },
+            { $unwind: '$assignedUser' },
+            {
+                $group: {
+                    _id: '$assignedTo',
+                    employee: { $first: '$assignedUser' },
+                    totalTasks: { $sum: 1 },
+                    completedTasks: {
+                        $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+                    },
+                    inProgressTasks: {
+                        $sum: { $cond: [{ $eq: ['$status', 'in-progress'] }, 1, 0] }
+                    },
+                    overdueTasks: {
+                        $sum: { $cond: [{ $eq: ['$status', 'overdue'] }, 1, 0] }
+                    },
+                    totalEstimatedHours: { $sum: '$estimatedHours' },
+                    totalActualHours: { $sum: '$actualHours' },
+                    avgProgress: { $avg: '$progress' }
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    employee: {
+                        _id: '$employee._id',
+                        name: '$employee.name',
+                        email: '$employee.email',
+                        role: '$employee.role',
+                        department: '$employee.department'
+                    },
+                    totalTasks: 1,
+                    completedTasks: 1,
+                    inProgressTasks: 1,
+                    overdueTasks: 1,
+                    totalEstimatedHours: 1,
+                    totalActualHours: 1,
+                    avgProgress: { $round: ['$avgProgress', 2] },
+                    completionRate: {
+                        $cond: [
+                            { $gt: ['$totalTasks', 0] },
+                            { $round: [{ $multiply: [{ $divide: ['$completedTasks', '$totalTasks'] }, 100] }, 2] },
+                            0
+                        ]
+                    },
+                    efficiency: {
+                        $cond: [
+                            { $and: [{ $gt: ['$totalEstimatedHours', 0] }, { $gt: ['$totalActualHours', 0] }] },
+                            { $round: [{ $multiply: [{ $divide: ['$totalEstimatedHours', '$totalActualHours'] }, 100] }, 2] },
+                            null
+                        ]
+                    }
+                }
+            },
+            { $sort: { completionRate: -1, 'employee.name': 1 } }
+        ]);
+
+        res.json({
+            success: true,
+            data: employeeSummary,
+            summary: {
+                totalEmployees: employeeSummary.length,
+                avgCompletionRate: employeeSummary.length > 0
+                    ? Math.round(employeeSummary.reduce((sum, emp) => sum + emp.completionRate, 0) / employeeSummary.length * 100) / 100
+                    : 0
+            }
+        });
+    } catch (error) {
+        console.error('Get employee summary error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error',

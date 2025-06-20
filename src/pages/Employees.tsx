@@ -227,10 +227,11 @@ const Employees = () => {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showCorrectionsModal, setShowCorrectionsModal] = useState(false); const [employeeAttendance, setEmployeeAttendance] = useState<AttendanceRecord[]>([]);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
-  const [selectedAttendanceRecord, setSelectedAttendanceRecord] = useState<AttendanceRecord | null>(null);
-  const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<Task | null>(null);
+  const [selectedAttendanceRecord, setSelectedAttendanceRecord] = useState<AttendanceRecord | null>(null); const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<Task | null>(null);
   const [taskCompletionReason, setTaskCompletionReason] = useState('');
   const [taskAction, setTaskAction] = useState<'completed' | 'cancelled'>('completed');
+  const [showTaskReasonModal, setShowTaskReasonModal] = useState(false);
+  const [selectedTaskForReason, setSelectedTaskForReason] = useState<Task | null>(null);
   const [employeeTasks, setEmployeeTasks] = useState<Task[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -585,11 +586,15 @@ const Employees = () => {
     setTaskAction(action);
     setShowTaskCompletionModal(true);
   };
-
   const handleCompleteTaskWithReason = () => {
     if (selectedTaskForCompletion) {
       updateTaskStatus(selectedTaskForCompletion._id, taskAction, taskCompletionReason);
     }
+  };
+
+  const handleViewTaskReason = (task: Task) => {
+    setSelectedTaskForReason(task);
+    setShowTaskReasonModal(true);
   };
 
   const getRoleColor = (role: string) => {
@@ -1203,8 +1208,8 @@ const Employees = () => {
                         <div>
                           <label className="text-sm font-medium text-gray-600">Status</label>
                           <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${selectedEmployee.status === 'active'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
                             }`}>
                             {selectedEmployee.status}
                           </span>
@@ -1349,7 +1354,7 @@ const Employees = () => {
                       <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center space-x-3">
                           <div className={`w-2 h-2 rounded-full ${record.status === 'present' ? 'bg-green-500' :
-                              record.status === 'late' ? 'bg-orange-500' : 'bg-red-500'
+                            record.status === 'late' ? 'bg-orange-500' : 'bg-red-500'
                             }`}></div>
                           <div>
                             <p className="text-sm font-medium text-gray-900">
@@ -1611,13 +1616,21 @@ const Employees = () => {
                               >
                                 Reopen
                               </button>
-                            )}
-                            {task.status !== 'completed' && task.status !== 'cancelled' && (
+                            )}                            {task.status !== 'completed' && task.status !== 'cancelled' && (
                               <button
                                 onClick={() => handleTaskCompletion(task, 'cancelled')}
                                 className="text-xs px-2 py-1 rounded bg-red-100 text-red-800 hover:bg-red-200 transition-colors"
                               >
                                 Cancel
+                              </button>
+                            )}
+                            {(task.status === 'completed' || task.status === 'cancelled') && task.completionReason && (
+                              <button
+                                onClick={() => handleViewTaskReason(task)}
+                                className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors flex items-center space-x-1"
+                              >
+                                <Eye className="h-3 w-3" />
+                                <span>View Reason</span>
                               </button>
                             )}
                           </div>
@@ -1680,8 +1693,77 @@ const Employees = () => {
                   }`}
               >
                 {taskAction === 'completed' ? 'Complete' : 'Cancel'} Task
+              </button>            </div>          </div>
+        </div>
+      )}
+
+      {/* Task Reason Modal */}
+      {showTaskReasonModal && selectedTaskForReason && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {selectedTaskForReason.status === 'completed' ? 'Completion' : 'Cancellation'} Reason
+              </h3>
+              <button
+                onClick={() => {
+                  setShowTaskReasonModal(false);
+                  setSelectedTaskForReason(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XCircle className="h-5 w-5" />
               </button>
-            </div>          </div>
+            </div>
+
+            <div className="mb-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Task: {selectedTaskForReason.title}</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Status:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedTaskForReason.status === 'completed'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                      }`}>
+                      {selectedTaskForReason.status}
+                    </span>
+                  </div>
+                  {selectedTaskForReason.completedAt && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Date:</span>
+                      <span className="text-gray-900">
+                        {format(new Date(selectedTaskForReason.completedAt), 'MMM dd, yyyy HH:mm')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {selectedTaskForReason.status === 'completed' ? 'Completion' : 'Cancellation'} Reason:
+              </label>
+              <div className="bg-gray-50 p-3 rounded-lg border">
+                <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                  {selectedTaskForReason.completionReason || 'No reason provided'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setShowTaskReasonModal(false);
+                  setSelectedTaskForReason(null);
+                }}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

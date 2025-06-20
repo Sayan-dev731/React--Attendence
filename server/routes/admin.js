@@ -15,16 +15,14 @@ router.get('/dashboard', authenticate, authorize('admin', 'hr'), async (req, res
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        // Basic counts
+        tomorrow.setDate(tomorrow.getDate() + 1);        // Basic counts
         const totalEmployees = await User.countDocuments({ role: { $ne: 'admin' } });
         const activeEmployees = await User.countDocuments({
             role: { $ne: 'admin' },
             status: 'active'
         });
-        const totalTasks = await Task.countDocuments();
-        const overdueTasks = await Task.countDocuments({ status: 'overdue' });
+        const totalTasks = await Task.countDocuments({ assignedTo: req.user.id });
+        const overdueTasks = await Task.countDocuments({ status: 'overdue', assignedTo: req.user.id });
 
         // Today's attendance
         const todayAttendance = await Attendance.countDocuments({
@@ -41,10 +39,11 @@ router.get('/dashboard', authenticate, authorize('admin', 'hr'), async (req, res
                 $lt: tomorrow
             },
             checkOut: { $exists: false }
-        });
-
-        // Task statistics
+        });        // Task statistics
         const taskStats = await Task.aggregate([
+            {
+                $match: { assignedTo: new mongoose.Types.ObjectId(req.user.id) }
+            },
             {
                 $group: {
                     _id: '$status',

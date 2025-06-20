@@ -17,7 +17,8 @@ import {
   Activity,
   Globe,
   MapIcon,
-  ClipboardList
+  ClipboardList,
+  Eye
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
@@ -143,6 +144,8 @@ const Dashboard = () => {
   const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<Task | null>(null);
   const [completionReason, setCompletionReason] = useState('');
   const [taskAction, setTaskAction] = useState<'completed' | 'cancelled'>('completed');
+  const [showTaskReasonModal, setShowTaskReasonModal] = useState(false);
+  const [selectedTaskForReason, setSelectedTaskForReason] = useState<Task | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -331,11 +334,15 @@ const Dashboard = () => {
     setTaskAction(status);
     setShowCompletionModal(true);
   };
-
   const handleCompleteTaskWithReason = () => {
     if (selectedTaskForCompletion) {
       updateTaskStatus(selectedTaskForCompletion._id, taskAction, completionReason);
     }
+  };
+
+  const handleViewTaskReason = (task: Task) => {
+    setSelectedTaskForReason(task);
+    setShowTaskReasonModal(true);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -1166,12 +1173,12 @@ const Dashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.status === 'present'
-                              ? 'bg-green-100 text-green-800'
-                              : record.status === 'late'
-                                ? 'bg-orange-100 text-orange-800'
-                                : record.status === 'absent'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
+                            ? 'bg-green-100 text-green-800'
+                            : record.status === 'late'
+                              ? 'bg-orange-100 text-orange-800'
+                              : record.status === 'absent'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
                             }`}>
                             {record.status}
                           </span>
@@ -1289,12 +1296,12 @@ const Dashboard = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.status === 'present'
-                                ? 'bg-green-100 text-green-800'
-                                : record.status === 'late'
-                                  ? 'bg-orange-100 text-orange-800'
-                                  : record.status === 'absent'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-yellow-100 text-yellow-800'
+                              ? 'bg-green-100 text-green-800'
+                              : record.status === 'late'
+                                ? 'bg-orange-100 text-orange-800'
+                                : record.status === 'absent'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
                               }`}>
                               {record.status}
                             </span>
@@ -1392,12 +1399,12 @@ const Dashboard = () => {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Status:</span>
                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${selectedAttendanceRecord.status === 'present'
-                            ? 'bg-green-100 text-green-800'
-                            : selectedAttendanceRecord.status === 'late'
-                              ? 'bg-orange-100 text-orange-800'
-                              : selectedAttendanceRecord.status === 'absent'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-yellow-100 text-yellow-800'
+                          ? 'bg-green-100 text-green-800'
+                          : selectedAttendanceRecord.status === 'late'
+                            ? 'bg-orange-100 text-orange-800'
+                            : selectedAttendanceRecord.status === 'absent'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
                           }`}>
                           {selectedAttendanceRecord.status}
                         </span>
@@ -1405,8 +1412,8 @@ const Dashboard = () => {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Work Mode:</span>
                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${selectedAttendanceRecord.isRemote
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
                           }`}>
                           {selectedAttendanceRecord.isRemote ? 'Remote' : 'In Office'}
                         </span>
