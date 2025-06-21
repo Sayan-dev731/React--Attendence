@@ -232,6 +232,8 @@ const Employees = () => {
   const [taskAction, setTaskAction] = useState<'completed' | 'cancelled'>('completed');
   const [showTaskReasonModal, setShowTaskReasonModal] = useState(false);
   const [selectedTaskForReason, setSelectedTaskForReason] = useState<Task | null>(null);
+  // Add new state variables for detailed task view
+  const [showTaskDetailModal, setShowTaskDetailModal] = useState(false); const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<Task | null>(null);
   const [employeeTasks, setEmployeeTasks] = useState<Task[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -595,6 +597,11 @@ const Employees = () => {
   const handleViewTaskReason = (task: Task) => {
     setSelectedTaskForReason(task);
     setShowTaskReasonModal(true);
+  };
+  // New functions for task details and description handling
+  const handleViewTaskDetails = (task: Task) => {
+    setSelectedTaskForDetail(task);
+    setShowTaskDetailModal(true);
   };
 
   const getRoleColor = (role: string) => {
@@ -1424,7 +1431,7 @@ const Employees = () => {
                 onClick={() => setShowTaskModal(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
-                <XCircle className="h-5 w-5" />
+                <XCircle className="h-6 w-6" />
               </button>
             </div>
 
@@ -1448,20 +1455,27 @@ const Employees = () => {
                                focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Enter task title..."
                     />
-                  </div>
-
-                  <div>
+                  </div>                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Description
                     </label>
                     <textarea
                       value={newTask.description}
                       onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                      rows={3}
+                      rows={6}
+                      maxLength={10000}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none 
-                               focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter task description..."
+                               focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                      placeholder="Enter detailed task description... You can include requirements, acceptance criteria, resources, deadlines, and any other relevant information."
                     />
+                    <div className="flex justify-between items-center mt-1">
+                      <p className="text-xs text-gray-500">
+                        Be as detailed as possible. Include requirements, steps, resources, and expectations.
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {newTask.description.length}/10,000 characters
+                      </p>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -1567,32 +1581,38 @@ const Employees = () => {
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {employeeTasks.map((task) => (
                       <div key={task._id} className="bg-white p-4 rounded-lg border shadow-sm">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h5 className="text-sm font-medium text-gray-900 mb-1">
-                              {task.title}
-                            </h5>
-                            <p className="text-xs text-gray-600 mb-2 line-clamp-2">
-                              {task.description}
-                            </p>
-                            <div className="flex items-center space-x-2 text-xs">
-                              <span className="flex items-center text-gray-500">
-                                <Clock className="h-3 w-3 mr-1" />
-                                {format(new Date(task.dueDate), 'MMM dd')}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
-                                {task.priority}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full font-medium ${getStatusColor(task.status)}`}>
-                                {task.status}
-                              </span>
+                        <div className="flex items-start justify-between">                          <div className="flex-1">                            <div className="flex items-start justify-between mb-1">
+                          <h5 className="text-sm font-medium text-gray-900 flex-1 mr-2">
+                            {task.title}
+                          </h5>
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => handleViewTaskDetails(task)}
+                              className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors flex items-center space-x-1"
+                              title="View complete task details and full description"
+                            >
+                              <Eye className="h-3 w-3" />
+                              <span>Full Details</span>
+                            </button>
+                          </div>                        </div>
+                          <div className="flex items-center space-x-2 text-xs">
+                            <span className="flex items-center text-gray-500">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {format(new Date(task.dueDate), 'MMM dd')}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
+                              {task.priority}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full font-medium ${getStatusColor(task.status)}`}>
+                              {task.status}
+                            </span>
+                          </div>
+                          {task.estimatedHours && (
+                            <div className="mt-1 text-xs text-gray-500">
+                              Est: {task.estimatedHours}h
                             </div>
-                            {task.estimatedHours && (
-                              <div className="mt-1 text-xs text-gray-500">
-                                Est: {task.estimatedHours}h
-                              </div>
-                            )}
-                          </div>                          <div className="flex flex-col space-y-1 ml-2">
+                          )}
+                        </div><div className="flex flex-col space-y-1 ml-2">
                             {task.status === 'pending' && (
                               <button
                                 onClick={() => updateTaskStatus(task._id, 'in-progress')}
@@ -1633,6 +1653,13 @@ const Employees = () => {
                                 <span>View Reason</span>
                               </button>
                             )}
+                            <button
+                              onClick={() => handleViewTaskDetails(task)}
+                              className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
+                              title="View task details"
+                            >
+                              <Eye className="h-3 w-3" />
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -1666,11 +1693,11 @@ const Employees = () => {
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={3}
-                maxLength={500}
+                maxLength={1000}
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
-                {taskCompletionReason.length}/500 characters (Required)
+                {taskCompletionReason.length}/1000 characters (Required)
               </p>
             </div>
 
@@ -1723,8 +1750,8 @@ const Employees = () => {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Status:</span>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedTaskForReason.status === 'completed'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
                       }`}>
                       {selectedTaskForReason.status}
                     </span>
@@ -2499,20 +2526,20 @@ const Employees = () => {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                         <div>
-                          <label className="text-sm font-medium text-orange-700 flex items-center">
+                          <label className="text-sm font-medium text-gray-700 flex items-center">
                             Old Value
                           </label>
                           <p className="text-sm text-gray-900 mt-1">{correction.oldValue}</p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-orange-700 flex items-center">
+                          <label className="text-sm font-medium text-gray-700 flex items-center">
                             New Value
                           </label>
                           <p className="text-sm text-gray-900 mt-1">{correction.newValue}</p>
                         </div>
                       </div>
                       <div className="mb-3">
-                        <label className="text-sm font-medium text-orange-700">Reason:</label>
+                        <label className="text-sm font-medium text-gray-700">Reason:</label>
                         <p className="text-sm text-gray-900 mt-1">{correction.reason}</p>
                       </div>
                       <div className="text-xs text-orange-600">
@@ -2527,6 +2554,230 @@ const Employees = () => {
                   <p className="text-gray-600">No corrections found for this record</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Detail Modal */}
+      {showTaskDetailModal && selectedTaskForDetail && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className={`p-2 rounded-lg ${getPriorityColor(selectedTaskForDetail.priority)} bg-opacity-20`}>
+                    <Target className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      {selectedTaskForDetail.title}
+                    </h2>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedTaskForDetail.status)}`}>
+                        {selectedTaskForDetail.status}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(selectedTaskForDetail.priority)}`}>
+                        {selectedTaskForDetail.priority} priority
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowTaskDetailModal(false);
+                    setSelectedTaskForDetail(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 p-1"
+                >
+                  <XCircle className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Content */}
+                <div className="lg:col-span-2 space-y-6">                  {/* Description */}
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+                      <FileText className="h-5 w-5 mr-2" />
+                      Description
+                    </h3>
+                    <div className="bg-gray-50 p-6 rounded-lg border max-h-96 overflow-y-auto">
+                      <div className="prose prose-sm max-w-none">
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed break-words">
+                          {selectedTaskForDetail.description}
+                        </p>
+                      </div>
+                      {selectedTaskForDetail.description.length > 500 && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>Long description ({selectedTaskForDetail.description.length} characters)</span>
+                            <span>Scroll to view all content</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  {selectedTaskForDetail.tags && selectedTaskForDetail.tags.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-3">Tags</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedTaskForDetail.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Attachments */}
+                  {selectedTaskForDetail.attachments && selectedTaskForDetail.attachments.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-3">Attachments</h3>
+                      <div className="space-y-2">
+                        {selectedTaskForDetail.attachments.map((attachment, index) => (
+                          <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg border">
+                            <FileText className="h-4 w-4 text-gray-400 mr-3" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">{attachment.fileName}</p>
+                              <p className="text-xs text-gray-500">
+                                {attachment.fileType} • {format(new Date(attachment.uploadedAt), 'MMM dd, yyyy HH:mm')}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Comments */}
+                  {selectedTaskForDetail.comments && selectedTaskForDetail.comments.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-3">Comments</h3>
+                      <div className="space-y-3">
+                        {selectedTaskForDetail.comments.map((comment, index) => (
+                          <div key={index} className="bg-gray-50 p-4 rounded-lg border">
+                            <div className="flex items-center justify-between mb-2">                              <span className="text-sm font-medium text-gray-900">
+                              {typeof comment.user === 'string' ? comment.user : 'Unknown User'}
+                            </span>
+                              <span className="text-xs text-gray-500">
+                                {format(new Date(comment.timestamp), 'MMM dd, yyyy HH:mm')}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700">{comment.comment}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sidebar */}
+                <div className="space-y-6">
+                  {/* Task Info */}
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h3 className="text-sm font-medium text-gray-900 mb-3">Task Information</h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Due Date:</span>
+                        <span className="text-gray-900 font-medium">
+                          {format(new Date(selectedTaskForDetail.dueDate), 'MMM dd, yyyy')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Category:</span>
+                        <span className="text-gray-900 capitalize">{selectedTaskForDetail.category}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Progress:</span>
+                        <span className="text-gray-900">{selectedTaskForDetail.progress || 0}%</span>
+                      </div>
+                      {selectedTaskForDetail.estimatedHours && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Estimated Hours:</span>
+                          <span className="text-gray-900">{selectedTaskForDetail.estimatedHours}h</span>
+                        </div>
+                      )}
+                      {selectedTaskForDetail.actualHours && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Actual Hours:</span>
+                          <span className="text-gray-900">{selectedTaskForDetail.actualHours}h</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Time Tracking */}
+                  {selectedTaskForDetail.timeTracking && selectedTaskForDetail.timeTracking.length > 0 && (
+                    <div className="bg-gray-50 p-4 rounded-lg border">
+                      <h3 className="text-sm font-medium text-gray-900 mb-3">Time Tracking</h3>
+                      <div className="space-y-3">
+                        {selectedTaskForDetail.timeTracking.map((entry, index) => (
+                          <div key={index} className="text-sm">
+                            <div className="flex justify-between items-start">
+                              <span className="text-gray-600">{entry.date}</span>
+                              <span className="text-gray-900 font-medium">{entry.duration}min</span>
+                            </div>
+                            {entry.description && (
+                              <p className="text-gray-700 text-xs mt-1">{entry.description}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Completion Info */}
+                  {(selectedTaskForDetail.status === 'completed' || selectedTaskForDetail.status === 'cancelled') && selectedTaskForDetail.completionReason && (
+                    <div className="bg-gray-50 p-4 rounded-lg border">
+                      <h3 className="text-sm font-medium text-gray-900 mb-3">
+                        {selectedTaskForDetail.status === 'completed' ? 'Completion' : 'Cancellation'} Details
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        {selectedTaskForDetail.completedAt && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Date:</span>
+                            <span className="text-gray-900">
+                              {format(new Date(selectedTaskForDetail.completedAt), 'MMM dd, yyyy HH:mm')}
+                            </span>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-gray-600 block mb-1">Reason:</span>
+                          <p className="text-gray-900 text-xs bg-white p-2 rounded border">
+                            {selectedTaskForDetail.completionReason}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-xl">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowTaskDetailModal(false);
+                    setSelectedTaskForDetail(null);
+                  }}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

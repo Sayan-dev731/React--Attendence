@@ -18,7 +18,9 @@ import {
   Globe,
   MapIcon,
   ClipboardList,
-  Eye
+  Eye,
+  Target,
+  FileText
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
@@ -54,6 +56,7 @@ interface Task {
   category: string;
   estimatedHours?: number;
   progress?: number;
+  completionReason?: string;
 }
 
 interface AttendanceRecord {
@@ -143,9 +146,9 @@ const Dashboard = () => {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine); const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<Task | null>(null);
   const [completionReason, setCompletionReason] = useState('');
-  const [taskAction, setTaskAction] = useState<'completed' | 'cancelled'>('completed');
-  const [showTaskReasonModal, setShowTaskReasonModal] = useState(false);
+  const [taskAction, setTaskAction] = useState<'completed' | 'cancelled'>('completed'); const [showTaskReasonModal, setShowTaskReasonModal] = useState(false);
   const [selectedTaskForReason, setSelectedTaskForReason] = useState<Task | null>(null);
+  const [showTaskDetailModal, setShowTaskDetailModal] = useState(false); const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<Task | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -339,10 +342,14 @@ const Dashboard = () => {
       updateTaskStatus(selectedTaskForCompletion._id, taskAction, completionReason);
     }
   };
-
   const handleViewTaskReason = (task: Task) => {
     setSelectedTaskForReason(task);
     setShowTaskReasonModal(true);
+  };
+  // Add functions for task details
+  const handleViewTaskDetails = (task: Task) => {
+    setSelectedTaskForDetail(task);
+    setShowTaskDetailModal(true);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -1046,71 +1053,88 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {userTasks.map((task) => (
-                  <div key={task._id} className="p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 mb-1">{task.title}</h4>
-                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
-                        <div className="flex items-center space-x-3 text-xs">
-                          <span className="flex items-center space-x-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>Due: {format(new Date(task.dueDate), 'MMM dd')}</span>
+                {userTasks.map((task) => (<div key={task._id} className="p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-1">
+                        <h4 className="font-medium text-gray-900 flex-1 mr-2">{task.title}</h4>
+                        <button
+                          onClick={() => handleViewTaskDetails(task)}
+                          className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors flex items-center space-x-1"
+                          title="View complete task details and full description"
+                        >
+                          <Eye className="h-3 w-3" />
+                          <span>Full Details</span>
+                        </button>                      </div>
+                      <div className="flex items-center space-x-3 text-xs">
+                        <span className="flex items-center space-x-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>Due: {format(new Date(task.dueDate), 'MMM dd')}</span>
+                        </span>
+                        <span className={`px-2 py-1 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                        <span className={`px-2 py-1 rounded-full font-medium ${getStatusColor(task.status)}`}>
+                          {task.status}
+                        </span>
+                        {task.estimatedHours && (
+                          <span className="text-gray-500">
+                            {task.estimatedHours}h est.
                           </span>
-                          <span className={`px-2 py-1 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
-                            {task.priority}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full font-medium ${getStatusColor(task.status)}`}>
-                            {task.status}
-                          </span>
-                          {task.estimatedHours && (
-                            <span className="text-gray-500">
-                              {task.estimatedHours}h est.
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex flex-col space-y-1 ml-4">
-                        {task.status === 'pending' && (
-                          <button
-                            onClick={() => updateTaskStatus(task._id, 'in-progress')}
-                            className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors"
-                          >
-                            Start
-                          </button>
-                        )}                        {task.status === 'in-progress' && (
-                          <button
-                            onClick={() => handleTaskCompletion(task, 'completed')}
-                            className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
-                          >
-                            Complete
-                          </button>
-                        )}
-                        {task.status !== 'completed' && (
-                          <button
-                            onClick={() => handleTaskCompletion(task, 'cancelled')}
-                            className="px-3 py-1 text-xs bg-red-100 text-red-800 rounded hover:bg-red-200 transition-colors"
-                          >
-                            Cancel
-                          </button>
                         )}
                       </div>
                     </div>
-                    {task.progress !== undefined && task.progress > 0 && (
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-gray-500">Progress</span>
-                          <span className="text-xs text-gray-700">{task.progress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${task.progress}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
+                    <div className="flex flex-col space-y-1 ml-4">
+                      {task.status === 'pending' && (
+                        <button
+                          onClick={() => updateTaskStatus(task._id, 'in-progress')}
+                          className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors"
+                        >
+                          Start
+                        </button>
+                      )}
+                      {task.status === 'in-progress' && (
+                        <button
+                          onClick={() => handleTaskCompletion(task, 'completed')}
+                          className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
+                        >
+                          Complete
+                        </button>
+                      )}
+                      {task.status !== 'completed' && task.status !== 'cancelled' && (
+                        <button
+                          onClick={() => handleTaskCompletion(task, 'cancelled')}
+                          className="px-3 py-1 text-xs bg-red-100 text-red-800 rounded hover:bg-red-200 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      {(task.status === 'completed' || task.status === 'cancelled') && task.completionReason && (
+                        <button
+                          onClick={() => handleViewTaskReason(task)}
+                          className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors flex items-center space-x-1"
+                        >
+                          <Eye className="h-3 w-3" />
+                          <span>View Reason</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  {task.progress !== undefined && task.progress > 0 && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-gray-500">Progress</span>
+                        <span className="text-xs text-gray-700">{task.progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${task.progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 ))}
               </div>)}          </div>
 
@@ -1554,11 +1578,11 @@ const Dashboard = () => {
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={3}
-                maxLength={500}
+                maxLength={1000}
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
-                {completionReason.length}/500 characters (Required)
+                {completionReason.length}/1000 characters (Required)
               </p>
             </div>
 
@@ -1579,9 +1603,203 @@ const Dashboard = () => {
                   ? 'bg-green-600 hover:bg-green-700'
                   : 'bg-red-600 hover:bg-red-700'
                   }`}
-              >
-                {taskAction === 'completed' ? 'Complete' : 'Cancel'} Task
+              >                {taskAction === 'completed' ? 'Complete' : 'Cancel'} Task
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Reason Modal */}
+      {showTaskReasonModal && selectedTaskForReason && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {selectedTaskForReason.status === 'completed' ? 'Completion' : 'Cancellation'} Reason
+              </h3>
+              <button
+                onClick={() => {
+                  setShowTaskReasonModal(false);
+                  setSelectedTaskForReason(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Task: {selectedTaskForReason.title}</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Status:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedTaskForReason.status === 'completed'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                      }`}>
+                      {selectedTaskForReason.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {selectedTaskForReason.status === 'completed' ? 'Completion' : 'Cancellation'} Reason:
+              </label>
+              <div className="bg-gray-50 p-3 rounded-lg border">
+                <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                  {selectedTaskForReason.completionReason || 'No reason provided'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setShowTaskReasonModal(false);
+                  setSelectedTaskForReason(null);
+                }}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Detail Modal */}
+      {showTaskDetailModal && selectedTaskForDetail && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className={`p-2 rounded-lg ${getPriorityColor(selectedTaskForDetail.priority)} bg-opacity-20`}>
+                    <Target className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      {selectedTaskForDetail.title}
+                    </h2>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedTaskForDetail.status)}`}>
+                        {selectedTaskForDetail.status}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(selectedTaskForDetail.priority)}`}>
+                        {selectedTaskForDetail.priority} priority
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowTaskDetailModal(false);
+                    setSelectedTaskForDetail(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 p-1"
+                >
+                  <XCircle className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Content */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Description */}
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+                      <FileText className="h-5 w-5 mr-2" />
+                      Description
+                    </h3>
+                    <div className="bg-gray-50 p-6 rounded-lg border max-h-96 overflow-y-auto">
+                      <div className="prose prose-sm max-w-none">
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed break-words">
+                          {selectedTaskForDetail.description}
+                        </p>
+                      </div>
+                      {selectedTaskForDetail.description.length > 500 && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>Long description ({selectedTaskForDetail.description.length} characters)</span>
+                            <span>Scroll to view all content</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sidebar */}
+                <div className="space-y-6">
+                  {/* Task Info */}
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h3 className="text-sm font-medium text-gray-900 mb-3">Task Information</h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Due Date:</span>
+                        <span className="text-gray-900 font-medium">
+                          {format(new Date(selectedTaskForDetail.dueDate), 'MMM dd, yyyy')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Category:</span>
+                        <span className="text-gray-900 capitalize">{selectedTaskForDetail.category}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Progress:</span>
+                        <span className="text-gray-900">{selectedTaskForDetail.progress || 0}%</span>
+                      </div>
+                      {selectedTaskForDetail.estimatedHours && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Estimated Hours:</span>
+                          <span className="text-gray-900">{selectedTaskForDetail.estimatedHours}h</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Completion Info */}
+                  {(selectedTaskForDetail.status === 'completed' || selectedTaskForDetail.status === 'cancelled') && selectedTaskForDetail.completionReason && (
+                    <div className="bg-gray-50 p-4 rounded-lg border">
+                      <h3 className="text-sm font-medium text-gray-900 mb-3">
+                        {selectedTaskForDetail.status === 'completed' ? 'Completion' : 'Cancellation'} Details
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="text-gray-600 block mb-1">Reason:</span>
+                          <p className="text-gray-900 text-xs bg-white p-2 rounded border">
+                            {selectedTaskForDetail.completionReason}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-xl">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowTaskDetailModal(false);
+                    setSelectedTaskForDetail(null);
+                  }}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
