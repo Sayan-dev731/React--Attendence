@@ -822,9 +822,7 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Stats Cards */}
+      )}      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {dashboardCards.map((card, index) => {
           const Icon = card.icon;
@@ -842,6 +840,163 @@ const Dashboard = () => {
             </div>
           );
         })}
+      </div>
+
+      {/* My Tasks Section - Enhanced */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border">
+        {/* Task Status Summary */}
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-medium text-gray-900">Task Status Overview</h4>
+            <span className="text-xs text-gray-500">Total: {userTasks.length} tasks</span>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="text-sm text-gray-700">
+                <span className="font-medium text-green-700">{userTasks.filter(task => task.status === 'completed').length}</span> Completed
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+              <span className="text-sm text-gray-700">
+                <span className="font-medium text-yellow-700">{userTasks.filter(task => task.status === 'in-progress' || task.status === 'pending').length}</span> In Progress/Pending
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span className="text-sm text-gray-700">
+                <span className="font-medium text-red-700">{userTasks.filter(task => task.status === 'overdue').length}</span> Overdue
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+            <ClipboardList className="h-5 w-5" />
+            <span>My Assigned Tasks</span>
+          </h3>
+          <span className="text-sm text-gray-500">
+            {userTasks.filter(task => task.status === 'pending').length} pending, {userTasks.filter(task => task.status === 'in-progress').length} in progress, {userTasks.filter(task => task.status === 'overdue').length} overdue
+          </span>
+        </div>
+
+        {userTasks.length === 0 ? (
+          <div className="text-center py-8">
+            <ClipboardList className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-600">No tasks assigned yet</p>
+            <p className="text-sm text-gray-500">Check back later for new assignments</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {userTasks.map((task) => {
+              // Determine highlighting based on priority and status
+              let taskBorderColor = 'border-gray-200';
+              let taskBgColor = 'bg-white';
+
+              if (task.status === 'overdue') {
+                taskBorderColor = 'border-red-300';
+                taskBgColor = 'bg-red-50';
+              } else if (task.status === 'in-progress') {
+                taskBorderColor = 'border-yellow-300';
+                taskBgColor = 'bg-yellow-50';
+              } else if (task.status === 'completed') {
+                taskBorderColor = 'border-green-300';
+                taskBgColor = 'bg-green-50';
+              } else if (task.priority === 'urgent' || task.priority === 'high') {
+                taskBorderColor = 'border-orange-300';
+                taskBgColor = 'bg-orange-50';
+              }
+
+              return (
+                <div key={task._id} className={`p-4 border-2 ${taskBorderColor} ${taskBgColor} rounded-lg hover:shadow-sm transition-shadow`}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-1">
+                        <h4 className="font-medium text-gray-900 flex-1 mr-2">{task.title}</h4>
+                        <button
+                          onClick={() => handleViewTaskDetails(task)}
+                          className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors flex items-center space-x-1"
+                          title="View complete task details and full description"
+                        >
+                          <Eye className="h-3 w-3" />
+                          <span>Full Details</span>
+                        </button>
+                      </div>
+                      <div className="flex items-center space-x-3 text-xs">
+                        <span className="flex items-center space-x-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>Due: {format(new Date(task.dueDate), 'MMM dd')}</span>
+                        </span>
+                        <span className={`px-2 py-1 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                        <span className={`px-2 py-1 rounded-full font-medium ${getStatusColor(task.status)}`}>
+                          {task.status}
+                        </span>
+                        {task.estimatedHours && (
+                          <span className="text-gray-500">
+                            {task.estimatedHours}h est.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col space-y-1 ml-4">
+                      {task.status === 'pending' && (
+                        <button
+                          onClick={() => updateTaskStatus(task._id, 'in-progress')}
+                          className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors"
+                        >
+                          Start
+                        </button>
+                      )}
+                      {task.status === 'in-progress' && (
+                        <button
+                          onClick={() => handleTaskCompletion(task, 'completed')}
+                          className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
+                        >
+                          Complete
+                        </button>
+                      )}
+                      {task.status !== 'completed' && task.status !== 'cancelled' && (
+                        <button
+                          onClick={() => handleTaskCompletion(task, 'cancelled')}
+                          className="px-3 py-1 text-xs bg-red-100 text-red-800 rounded hover:bg-red-200 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      {(task.status === 'completed' || task.status === 'cancelled') && task.completionReason && (
+                        <button
+                          onClick={() => handleViewTaskReason(task)}
+                          className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors flex items-center space-x-1"
+                        >
+                          <Eye className="h-3 w-3" />
+                          <span>View Reason</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {task.progress !== undefined && task.progress > 0 && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-gray-500">Progress</span>
+                        <span className="text-xs text-gray-700">{task.progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${task.progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Current Break Status */}
@@ -1011,9 +1166,7 @@ const Dashboard = () => {
                 <span className="text-gray-600">Remote Days</span>
                 <span className="font-semibold text-blue-600">{stats.remoteDays || 0}</span>
               </div>
-            </div>
-
-            <div className="pt-3 border-t">
+            </div>            <div className="pt-3 border-t">
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Avg. Working Hours</span>
@@ -1029,114 +1182,11 @@ const Dashboard = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Total Breaks</span>
-                  <span className="font-semibold text-orange-600">{stats.totalBreaks || 0}</span>            </div>
+                  <span className="font-semibold text-orange-600">{stats.totalBreaks || 0}</span>
+                </div>
               </div>
             </div>
           </div>
-
-          {/* My Tasks Section */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                <ClipboardList className="h-5 w-5" />
-                <span>My Tasks</span>
-              </h3>              <span className="text-sm text-gray-500">
-                {userTasks.filter(task => task.status === 'pending').length} pending, {userTasks.filter(task => task.status === 'in-progress').length} in progress, {userTasks.filter(task => task.status === 'overdue').length} overdue
-              </span>
-            </div>
-
-            {userTasks.length === 0 ? (
-              <div className="text-center py-8">
-                <ClipboardList className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600">No tasks assigned yet</p>
-                <p className="text-sm text-gray-500">Check back later for new assignments</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {userTasks.map((task) => (<div key={task._id} className="p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-1">
-                        <h4 className="font-medium text-gray-900 flex-1 mr-2">{task.title}</h4>
-                        <button
-                          onClick={() => handleViewTaskDetails(task)}
-                          className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors flex items-center space-x-1"
-                          title="View complete task details and full description"
-                        >
-                          <Eye className="h-3 w-3" />
-                          <span>Full Details</span>
-                        </button>                      </div>
-                      <div className="flex items-center space-x-3 text-xs">
-                        <span className="flex items-center space-x-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>Due: {format(new Date(task.dueDate), 'MMM dd')}</span>
-                        </span>
-                        <span className={`px-2 py-1 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
-                          {task.priority}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full font-medium ${getStatusColor(task.status)}`}>
-                          {task.status}
-                        </span>
-                        {task.estimatedHours && (
-                          <span className="text-gray-500">
-                            {task.estimatedHours}h est.
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col space-y-1 ml-4">
-                      {task.status === 'pending' && (
-                        <button
-                          onClick={() => updateTaskStatus(task._id, 'in-progress')}
-                          className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors"
-                        >
-                          Start
-                        </button>
-                      )}
-                      {task.status === 'in-progress' && (
-                        <button
-                          onClick={() => handleTaskCompletion(task, 'completed')}
-                          className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
-                        >
-                          Complete
-                        </button>
-                      )}
-                      {task.status !== 'completed' && task.status !== 'cancelled' && (
-                        <button
-                          onClick={() => handleTaskCompletion(task, 'cancelled')}
-                          className="px-3 py-1 text-xs bg-red-100 text-red-800 rounded hover:bg-red-200 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                      {(task.status === 'completed' || task.status === 'cancelled') && task.completionReason && (
-                        <button
-                          onClick={() => handleViewTaskReason(task)}
-                          className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors flex items-center space-x-1"
-                        >
-                          <Eye className="h-3 w-3" />
-                          <span>View Reason</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {task.progress !== undefined && task.progress > 0 && (
-                    <div className="mt-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-500">Progress</span>
-                        <span className="text-xs text-gray-700">{task.progress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${task.progress}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                ))}
-              </div>)}          </div>
 
           {/* Attendance History Section */}
           <div className="bg-white p-6 rounded-xl shadow-sm border">
