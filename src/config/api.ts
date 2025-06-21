@@ -14,6 +14,8 @@ export const API_ENDPOINTS = {
         SIGNUP: `${API_BASE_URL}/auth/signup`,
         LOGOUT: `${API_BASE_URL}/auth/logout`,
         ME: `${API_BASE_URL}/auth/me`,
+        UPDATE_PROFILE: `${API_BASE_URL}/auth/profile`,
+        UPDATE_PASSWORD: `${API_BASE_URL}/auth/password`,
     },
     ATTENDANCE: {
         MARK: `${API_BASE_URL}/attendance/mark`,

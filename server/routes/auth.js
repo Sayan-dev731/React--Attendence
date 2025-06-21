@@ -159,4 +159,117 @@ router.get('/me', authenticate, (req, res) => {
   });
 });
 
+// @route   PUT /api/auth/profile
+// @desc    Update user profile
+// @access  Private
+router.put('/profile', [
+  authenticate,
+  body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
+  body('email').optional().isEmail().withMessage('Please provide a valid email'),
+  body('department').optional().trim()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const { name, email, department } = req.body;
+    const userId = req.user._id;
+
+    // Check if email is already taken by another user
+    if (email && email !== req.user.email) {
+      const existingUser = await User.findOne({ email, _id: { $ne: userId } });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email is already taken by another user'
+        });
+      }
+    }
+
+    // Update user profile
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (department !== undefined) updateData.department = department;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: updatedUser.toJSON()
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error occurred'
+    });
+  }
+});
+
+// @route   PUT /api/auth/password
+// @desc    Update user password
+// @access  Private
+router.put('/password', [
+  authenticate,
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user._id;
+
+    // Find user with password field
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Password updated successfully'
+    });
+  } catch (error) {
+    console.error('Password update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error occurred'
+    });
+  }
+});
+
 export default router;
