@@ -17,9 +17,9 @@ jobs:
           echo "Pinging server to keep it alive..."
             # Replace YOUR_RENDER_URL with your actual Render service URL
           # Example: https://your-app-name.onrender.com
-          RENDER_URL="${{ secrets.RENDER_URL }}"
+          RENDER_URL="https://attendence-jmza.onrender.com/"
           if [ -z "$RENDER_URL" ]; then
-            RENDER_URL="https://your-app-name.onrender.com"
+            RENDER_URL="https://attendence-jmza.onrender.com/"
           fi
           
           # Ping the health check endpoint

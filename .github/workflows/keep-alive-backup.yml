@@ -15,9 +15,9 @@ jobs:
         run: |
           echo "🔄 Backup ping to keep server alive..."
             # Use the same URL from secrets or fallback
-          RENDER_URL="${{ secrets.RENDER_URL }}"
+          RENDER_URL="https://attendence-jmza.onrender.com/"
           if [ -z "$RENDER_URL" ]; then
-            RENDER_URL="https://your-app-name.onrender.com"
+            RENDER_URL="https://attendence-jmza.onrender.com/"
           fi
           
           # Ping with timeout and retry logic
